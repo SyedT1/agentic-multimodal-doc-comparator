@@ -1,6 +1,6 @@
 ---
 title: Agentic Multi-Modal Document Comparator
-emoji: 🔥
+emoji: 📚
 colorFrom: indigo
 colorTo: purple
 sdk: docker
