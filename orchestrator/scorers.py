@@ -5,7 +5,7 @@ import numpy as np
 from typing import List, Dict, Any, Tuple
 from sklearn.metrics.pairwise import cosine_similarity
 
-from models.similarity import ModalityScore, MatchedChunk
+from models.similarity import ModalityScore
 from models.document import DocumentChunk, TableExtraction
 import config
 
