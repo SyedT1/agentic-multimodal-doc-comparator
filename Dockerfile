@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY requirements.txt ./
 COPY src/ ./src/
-
+COPY streamlit_app.py ./
 RUN pip3 install -r requirements.txt
 
 EXPOSE 8501
