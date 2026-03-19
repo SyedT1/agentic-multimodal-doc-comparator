@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # agentic-multimodal-doc-comparator
 
 An agentic system to accurately match document similarity of two docs containing complex design
@@ -158,25 +157,3 @@ MIT License
 
 - Architecture inspired by multi-agent RAG systems
 - Built with Streamlit, sentence-transformers, and FAISS
-=======
----
-title: Agentic Doc Sim Streamlit
-emoji: 🚀
-colorFrom: red
-colorTo: red
-sdk: docker
-app_port: 8501
-tags:
-- streamlit
-pinned: false
-short_description: Streamlit template space
-license: mit
----
-
-# Welcome to Streamlit!
-
-Edit `/src/streamlit_app.py` to customize this app to your heart's desire. :heart:
-
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
->>>>>>> space/main
