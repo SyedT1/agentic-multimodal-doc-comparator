@@ -47,7 +47,7 @@ def main():
 
     # Show architecture diagram
     with st.expander("🏗️ View System Architecture", expanded=False):
-        arch_path = Path("img/multi_agent_doc_similarity_architecture.svg")
+        arch_path = Path("src/img/multi_agent_doc_similarity_architecture.svg")
         if arch_path.exists():
             st.image(str(arch_path), use_container_width=True)
         else:
