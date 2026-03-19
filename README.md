@@ -1,8 +1,6 @@
-<<<<<<< HEAD
-=======
 ---
 title: Agentic Multi-Modal Document Comparator
-emoji: 📄🔍
+emoji: 🔍
 colorFrom: indigo
 colorTo: purple
 sdk: docker
@@ -13,7 +11,6 @@ app_port: 8501  # Streamlit default port – eta important Docker e
 pinned: false
 ---
 
->>>>>>> 00d043e9076333d8596e1bb6d036542eca145d38
 # agentic-multimodal-doc-comparator
 
 An agentic system to accurately match document similarity of two docs containing complex design
