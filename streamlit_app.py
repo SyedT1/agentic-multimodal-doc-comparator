@@ -1,10 +1,17 @@
 """
 Multi-Agent Document Comparison Streamlit App
 """
+import sys
+from pathlib import Path
+
+# Add project root to Python path for imports
+project_root = Path(__file__).parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 import streamlit as st
 import asyncio
 import json
-from pathlib import Path
 
 # Import agents and utilities
 from agents.ingestion_agent import IngestionAgent

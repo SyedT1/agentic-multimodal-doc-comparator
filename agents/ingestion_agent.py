@@ -1,7 +1,7 @@
 """
 Document ingestion agent for extracting content from PDF and DOCX files.
+Supports both PyMuPDF and pypdf for PDF parsing.
 """
-import fitz  # PyMuPDF
 import pdfplumber
 from docx import Document
 from typing import Dict, List, Any
@@ -9,6 +9,23 @@ from pathlib import Path
 
 from agents.base_agent import BaseAgent
 from models.document import RawDocument
+
+# Try to import PyMuPDF, fallback to pypdf if not available
+try:
+    import fitz  # PyMuPDF
+    USING_PYMUPDF = True
+    print("✓ Using PyMuPDF for PDF text extraction")
+except (ImportError, OSError) as e:
+    print(f"⚠ PyMuPDF not available ({e}), falling back to pypdf")
+    try:
+        from pypdf import PdfReader
+        USING_PYMUPDF = False
+        print("✓ Using pypdf for PDF text extraction")
+    except ImportError:
+        raise ImportError(
+            "Neither PyMuPDF nor pypdf is available. "
+            "Install one of them: pip install PyMuPDF or pip install pypdf"
+        )
 
 
 class IngestionAgent(BaseAgent):
@@ -63,17 +80,29 @@ class IngestionAgent(BaseAgent):
         raw_text = ""
         raw_tables = []
 
-        # Extract text using PyMuPDF
-        with fitz.open(file_path) as pdf_doc:
-            for page_num, page in enumerate(pdf_doc, start=1):
-                page_text = page.get_text()
+        # Extract text using PyMuPDF or pypdf
+        if USING_PYMUPDF:
+            # Extract text using PyMuPDF
+            with fitz.open(file_path) as pdf_doc:
+                for page_num, page in enumerate(pdf_doc, start=1):
+                    page_text = page.get_text()
+                    raw_text += page_text + "\n"
+                    pages.append({
+                        "page_num": page_num,
+                        "text": page_text
+                    })
+        else:
+            # Extract text using pypdf
+            reader = PdfReader(file_path)
+            for page_num, page in enumerate(reader.pages, start=1):
+                page_text = page.extract_text() or ""
                 raw_text += page_text + "\n"
                 pages.append({
                     "page_num": page_num,
                     "text": page_text
                 })
 
-        # Extract tables using pdfplumber
+        # Extract tables using pdfplumber (works with both)
         with pdfplumber.open(file_path) as pdf:
             for page_num, page in enumerate(pdf.pages, start=1):
                 tables_on_page = page.extract_tables()
