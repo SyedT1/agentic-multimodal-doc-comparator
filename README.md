@@ -1,4 +1,16 @@
-<<<<<<< HEAD
+---
+title: Agentic Multi-Modal Document Comparator
+emoji: 📄🔍
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+sdk_version: latest  # or specific if needed
+python_version: "3.10"  # tor requirements er sathe match koro
+app_file: src/streamlit_app.py  # tor main Streamlit file (src folder e ache)
+app_port: 8501  # Streamlit default port – eta important Docker e
+pinned: false
+---
+
 # agentic-multimodal-doc-comparator
 
 An agentic system to accurately match document similarity of two docs containing complex design
