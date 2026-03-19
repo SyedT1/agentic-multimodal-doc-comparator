@@ -15,7 +15,7 @@ pinned: false
 
 An agentic system to accurately match document similarity of two docs containing complex design
 
-![System Architecture](img/multi_agent_doc_similarity_architecture.svg)
+![System Architecture](src/img/multi_agent_doc_similarity_architecture.svg)
 
 ## Features (Phase 1)
 
