@@ -12,7 +12,7 @@ COPY requirements.txt ./
 COPY src/ ./src/
 COPY streamlit_app.py ./
 RUN pip3 install -r requirements.txt
-ENV PYTHONPATH=/app/src        # ← add this
+ENV PYTHONPATH=/app/src       
 EXPOSE 8501
 
 
