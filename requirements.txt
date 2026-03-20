@@ -14,6 +14,9 @@ pdfplumber>=0.10.0
 sentence-transformers>=2.3.0
 torch>=2.2.0
 
+# Phase 2: Vision models for image comparison
+transformers>=4.36.0  # For CLIP models
+
 # Vector storage
 faiss-cpu>=1.7.0
 

@@ -1,7 +1,7 @@
 """
 Data models for similarity scoring and comparison results.
 """
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -26,6 +26,9 @@ class SimilarityReport(BaseModel):
     overall_score: float = Field(..., ge=0.0, le=1.0, description="Overall similarity score (0.0 to 1.0)")
     text_score: ModalityScore = Field(..., description="ModalityScore for text")
     table_score: ModalityScore = Field(..., description="ModalityScore for tables")
+    image_score: Optional[ModalityScore] = Field(None, description="ModalityScore for images (Phase 2)")
+    layout_score: Optional[ModalityScore] = Field(None, description="ModalityScore for layout (Phase 2)")
+    metadata_score: Optional[ModalityScore] = Field(None, description="ModalityScore for metadata (Phase 2)")
     matched_sections: List[Dict[str, Any]] = Field(default_factory=list, description="List of matched sections with details")
     weights_used: Dict[str, float] = Field(default_factory=dict, description="Weights used for modality scoring")
     timestamp: datetime = Field(default_factory=datetime.now, description="Time when report was generated")

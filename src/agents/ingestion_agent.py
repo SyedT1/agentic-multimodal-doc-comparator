@@ -121,7 +121,8 @@ class IngestionAgent(BaseAgent):
             pages=pages,
             raw_text=raw_text.strip(),
             raw_tables=raw_tables,
-            total_pages=len(pages)
+            total_pages=len(pages),
+            metadata={"file_path": file_path}
         )
 
     async def _ingest_docx(self, file_path: str) -> RawDocument:
@@ -172,5 +173,6 @@ class IngestionAgent(BaseAgent):
             pages=pages,
             raw_text=raw_text.strip(),
             raw_tables=raw_tables,
-            total_pages=1  # DOCX treated as single page
+            total_pages=1,  # DOCX treated as single page
+            metadata={"file_path": file_path}
         )

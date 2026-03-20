@@ -75,6 +75,7 @@ def create_modality_breakdown_chart(report: SimilarityReport) -> go.Figure:
     scores = []
     weights = []
 
+    # Add all available modalities
     if report.text_score:
         modalities.append("Text")
         scores.append(report.text_score.score * 100)
@@ -84,6 +85,21 @@ def create_modality_breakdown_chart(report: SimilarityReport) -> go.Figure:
         modalities.append("Table")
         scores.append(report.table_score.score * 100)
         weights.append(report.weights_used.get("table", 0) * 100)
+
+    if report.image_score:
+        modalities.append("Image")
+        scores.append(report.image_score.score * 100)
+        weights.append(report.weights_used.get("image", 0) * 100)
+
+    if report.layout_score:
+        modalities.append("Layout")
+        scores.append(report.layout_score.score * 100)
+        weights.append(report.weights_used.get("layout", 0) * 100)
+
+    if report.metadata_score:
+        modalities.append("Metadata")
+        scores.append(report.metadata_score.score * 100)
+        weights.append(report.weights_used.get("metadata", 0) * 100)
 
     # Create bar chart
     fig = go.Figure()
@@ -153,6 +169,18 @@ def format_matched_sections(matched_sections: List[Dict[str, Any]]) -> str:
             output.append("")
             output.append(f"📊 Doc 2 Table (Page {section.get('doc2_page', '?')}):")
             output.append(f"_{section.get('doc2_schema', '')}_")
+
+        elif section_type == "image":
+            output.append(f"🖼️ Doc 1 Image (Page {section.get('doc1_page', '?')}):")
+            output.append(f"_Image ID: {section.get('doc1_image_id', 'N/A')}_")
+            output.append("")
+            output.append(f"🖼️ Doc 2 Image (Page {section.get('doc2_page', '?')}):")
+            output.append(f"_Image ID: {section.get('doc2_image_id', 'N/A')}_")
+
+        elif section_type == "metadata":
+            output.append(f"📋 Field: **{section.get('field', 'unknown').title()}**")
+            output.append(f"- Doc 1: {section.get('doc1_value', 'N/A')}")
+            output.append(f"- Doc 2: {section.get('doc2_value', 'N/A')}")
 
         output.append("")
         output.append("---")

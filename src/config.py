@@ -29,12 +29,30 @@ TEXT_CHUNK_OVERLAP = 50  # tokens
 # Similarity parameters
 TOP_K_MATCHES = 10  # Number of similar chunks to retrieve
 
-# Modality weights (Phase 1: text + tables only)
+# Modality weights (Phase 2: all modalities)
 # These weights must sum to 1.0
 MODALITY_WEIGHTS = {
+    "text": 0.35,
+    "table": 0.25,
+    "image": 0.20,     # Phase 2
+    "layout": 0.10,    # Phase 2
+    "metadata": 0.10   # Phase 2
+}
+
+# Phase 1 only weights (backward compatibility)
+MODALITY_WEIGHTS_PHASE1 = {
     "text": 0.60,
     "table": 0.40
 }
+
+# Phase 2 feature flags
+ENABLE_IMAGE_COMPARISON = True
+ENABLE_LAYOUT_COMPARISON = True
+ENABLE_METADATA_COMPARISON = True
+
+# CLIP model for image embeddings (Phase 2)
+CLIP_MODEL = "openai/clip-vit-base-patch32"
+CLIP_EMBEDDING_DIMENSION = 512
 
 # File constraints
 MAX_FILE_SIZE_MB = 50

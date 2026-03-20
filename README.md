@@ -4,10 +4,10 @@ emoji: 📚
 colorFrom: indigo
 colorTo: purple
 sdk: docker
-sdk_version: latest  # or specific if needed
-python_version: "3.10"  # tor requirements er sathe match koro
-app_file: src/streamlit_app.py  # tor main Streamlit file (src folder e ache)
-app_port: 8501  # Streamlit default port – eta important Docker e
+sdk_version: latest
+python_version: "3.10"
+app_file: src/streamlit_app.py 
+app_port: 8501
 pinned: false
 ---
 
@@ -17,25 +17,34 @@ An agentic system to accurately match document similarity of two docs containing
 
 ![System Architecture](src/img/multi_agent_doc_similarity_architecture.svg)
 
-## Features (Phase 1)
+## Features (Phase 2 - Complete)
 
-- **Multi-modal document analysis**: Text and table extraction
-- **Semantic similarity**: Uses sentence-transformers for embeddings
+- **Multi-modal document analysis**: Text, tables, images, layout, and metadata extraction
+- **Vision-based image comparison**: Uses CLIP embeddings for semantic image similarity
+- **Document structure analysis**: Hierarchical section detection and layout comparison
+- **Metadata comparison**: Title, author, keywords, dates, and custom properties
+- **Semantic similarity**: Uses sentence-transformers for text embeddings
 - **Interactive Streamlit UI**: Easy-to-use web interface
 - **Support for PDF and DOCX**: Compare documents in multiple formats
 - **Detailed similarity reports**: Per-modality breakdown and matched sections
-- **Configurable weights**: Adjust importance of text vs. tables
+- **Configurable weights**: Adjust importance across all modalities
+- **Batch comparison**: Compare 1 document against N documents or find duplicates
 
 ## System Architecture
 
-The system implements a 6-layer architecture:
+The system implements a 6-layer architecture with 5 specialized agents:
 
 1. **Input Layer**: Accepts PDF/DOCX documents
-2. **Ingestion Layer**: Extracts raw content (text, tables)
-3. **Modality Extractors**: Specialized agents for text and table processing
+2. **Ingestion Layer**: Extracts raw content (text, tables, images, metadata)
+3. **Modality Extractors**: Specialized agents for multimodal processing
+   - **Text Agent**: Chunking and sentence embeddings
+   - **Table Agent**: Table extraction and linearization
+   - **Image Agent**: CLIP-based visual embeddings (Phase 2)
+   - **Layout Agent**: Document structure and hierarchy (Phase 2)
+   - **Meta Agent**: Metadata extraction and comparison (Phase 2)
 4. **Vector Store**: FAISS-based similarity search
-5. **Orchestrator**: Coordinates comparison and aggregates scores
-6. **Output Layer**: Similarity report with visualizations
+5. **Orchestrator**: Coordinates comparison and aggregates weighted scores
+6. **Output Layer**: Comprehensive similarity report with visualizations
 
 ## Installation
 
@@ -76,65 +85,116 @@ The app will open in your browser at `http://localhost:8501`
 ### Using the App
 
 1. **Upload Documents**: Upload two documents (PDF or DOCX) in the designated areas
-2. **Adjust Weights**: Use the sidebar to adjust the weight given to text vs. table comparison
-3. **Compare**: Click the "Compare Documents" button
-4. **View Results**:
+2. **Adjust Weights**: Use the sidebar to adjust weights for each modality (text, tables, images, layout, metadata)
+3. **Enable/Disable Modalities**: Toggle Phase 2 features in config.py
+4. **Compare**: Click the "Compare Documents" button
+5. **View Results**:
    - Overall similarity score (0-100%)
-   - Per-modality breakdown (text and table scores)
-   - Top matched sections from both documents
-5. **Download Report**: Export results as JSON for further analysis
+   - Per-modality breakdown (text, tables, images, layout, metadata)
+   - Top matched sections from all modalities
+   - Image matches with visual similarity
+   - Metadata field comparisons
+6. **Download Report**: Export results as JSON for further analysis
+7. **Batch Comparison** (API): Use `BatchComparisonOrchestrator` for 1-to-N comparisons
+
+### API Usage Example
+
+```python
+from orchestrator.batch_orchestrator import BatchComparisonOrchestrator
+
+# Initialize orchestrator
+batch_orchestrator = BatchComparisonOrchestrator()
+
+# Compare one document against multiple candidates
+reports = await batch_orchestrator.compare_one_to_many(
+    query_doc=doc1,
+    query_embeddings={"text": emb1_text, "table": emb1_table, "image": emb1_image},
+    candidate_docs=[doc2, doc3, doc4],
+    candidate_embeddings=[emb2, emb3, emb4]
+)
+
+# Get top 3 matches
+top_matches = batch_orchestrator.get_top_matches(reports, top_k=3)
+
+# Find duplicates in a collection
+duplicates = await batch_orchestrator.find_duplicates(
+    docs=all_docs,
+    embeddings=all_embeddings,
+    duplicate_threshold=0.9
+)
+```
 
 ## Project Structure
 
 ```
 agentic-multimodal-doc-comparator/
-├── agents/                     # Modality extraction agents
-│   ├── base_agent.py          # Abstract base class
-│   ├── ingestion_agent.py     # PDF/DOCX parsing
-│   ├── text_agent.py          # Text chunking & embeddings
-│   └── table_agent.py         # Table extraction & embeddings
-├── orchestrator/               # Similarity orchestration
-│   ├── scorers.py             # Per-modality scoring
-│   └── similarity_orchestrator.py  # Main orchestrator
-├── storage/                    # Vector storage
-│   └── vector_store.py        # FAISS wrapper
-├── models/                     # Data models
-│   ├── document.py            # Document structures
-│   └── similarity.py          # Similarity report structures
-├── utils/                      # Utilities
-│   ├── file_handler.py        # File upload/validation
-│   └── visualization.py       # Result visualization
-├── config.py                   # Configuration
-├── streamlit_app.py           # Main Streamlit UI
-└── requirements.txt           # Dependencies
+├── src/
+│   ├── agents/                     # Modality extraction agents
+│   │   ├── base_agent.py          # Abstract base class
+│   │   ├── ingestion_agent.py     # PDF/DOCX parsing
+│   │   ├── text_agent.py          # Text chunking & embeddings
+│   │   ├── table_agent.py         # Table extraction & embeddings
+│   │   ├── image_agent.py         # Image extraction & CLIP embeddings (Phase 2)
+│   │   ├── layout_agent.py        # Document structure analysis (Phase 2)
+│   │   └── meta_agent.py          # Metadata extraction (Phase 2)
+│   ├── orchestrator/               # Similarity orchestration
+│   │   ├── scorers.py             # Per-modality scoring (all modalities)
+│   │   ├── similarity_orchestrator.py  # Main orchestrator
+│   │   └── batch_orchestrator.py  # Batch comparison (Phase 2)
+│   ├── storage/                    # Vector storage
+│   │   └── vector_store.py        # FAISS wrapper
+│   ├── models/                     # Data models
+│   │   ├── document.py            # Document structures (all modalities)
+│   │   └── similarity.py          # Similarity report structures
+│   ├── utils/                      # Utilities
+│   │   ├── file_handler.py        # File upload/validation
+│   │   └── visualization.py       # Result visualization
+│   ├── img/                        # Architecture diagrams
+│   ├── config.py                   # Configuration
+│   └── streamlit_app.py           # Main Streamlit UI
+├── requirements.txt                # Dependencies
+├── Dockerfile                      # Docker configuration
+└── README.md                       # This file
 ```
 
 ## Configuration
 
-Edit `config.py` to customize:
+Edit `src/config.py` to customize:
 
-- **Embedding model**: Default is `all-MiniLM-L6-v2`
+- **Embedding models**:
+  - Text: `all-MiniLM-L6-v2` (384 dimensions)
+  - Images: `openai/clip-vit-base-patch32` (512 dimensions)
 - **Chunk size**: Default 512 tokens with 50-token overlap
-- **Modality weights**: Default 60% text, 40% tables
+- **Modality weights**: Configurable for all 5 modalities
+  - Text: 35%, Tables: 25%, Images: 20%, Layout: 10%, Metadata: 10%
+- **Phase 2 feature flags**: Enable/disable individual modalities
 - **File limits**: Default 50MB max file size
 
-## Phase 2 Roadmap
+## Phase 2 Status
 
-Future enhancements include:
+✅ **Completed Features:**
 
-- **Image Agent**: Extract and compare images using CLIP embeddings
-- **Layout Agent**: Analyze document structure and section hierarchy
-- **Meta Agent**: Compare metadata (title, author, date, keywords)
-- **Batch Comparison**: Compare 1 document against N documents
-- **Enhanced UI**: Visual diff, interactive navigation, filtering
+- ✅ **Image Agent**: Extract and compare images using CLIP embeddings
+- ✅ **Layout Agent**: Analyze document structure and section hierarchy
+- ✅ **Meta Agent**: Compare metadata (title, author, date, keywords)
+- ✅ **Batch Comparison**: Compare 1 document against N documents or find duplicates
+- ✅ **Enhanced Scoring**: All 5 modalities integrated into weighted similarity
+
+🚧 **Future Enhancements:**
+
+- **Enhanced UI**: Visual diff viewer, interactive navigation, advanced filtering
+- **API Endpoints**: REST API for programmatic access
+- **Document Clustering**: Group similar documents automatically
+- **Explainability**: Visual explanations for similarity scores
 
 ## Technical Details
 
 ### Models & Libraries
 
-- **Embedding**: sentence-transformers (all-MiniLM-L6-v2, 384 dimensions)
-- **PDF Parsing**: PyMuPDF (text) + pdfplumber (tables)
-- **DOCX Parsing**: python-docx
+- **Text Embeddings**: sentence-transformers (all-MiniLM-L6-v2, 384 dimensions)
+- **Image Embeddings**: CLIP via transformers (clip-vit-base-patch32, 512 dimensions)
+- **PDF Parsing**: pypdf (text) + pdfplumber (tables) + PyMuPDF (images, optional)
+- **DOCX Parsing**: python-docx (text, tables, images, metadata)
 - **Vector Search**: FAISS (cosine similarity)
 - **UI**: Streamlit with Plotly visualizations
 
@@ -142,7 +202,10 @@ Future enhancements include:
 
 - **Text**: Cosine similarity between chunk embeddings, averaged over best matches
 - **Tables**: Schema and content similarity using linearized table embeddings
-- **Overall**: Weighted combination of modality scores
+- **Images**: CLIP embedding cosine similarity for visual semantic comparison
+- **Layout**: Structural similarity (sections, hierarchy depth, page density)
+- **Metadata**: Field-by-field comparison (title, author, keywords, dates)
+- **Overall**: Configurable weighted combination of all modality scores
 
 ## Troubleshooting
 
