@@ -18,5 +18,5 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git remote add space https://huggingface.co/spaces/StrikingRatio/agentic-doc-sim-streamlit || true
-          git push https://StrikingRatio:${HF_TOKEN}@huggingface.co/spaces/StrikingRatio/agentic-doc-sim-streamlit main --force
+          git remote add space https://huggingface.co/spaces/syedmohaiminulhoque/agentic-doc-sim-streamlit || true
+          git push https://StrikingRatio:${HF_TOKEN}@huggingface.co/spaces/syedmohaiminulhoque/agentic-doc-sim-streamlit main --force
