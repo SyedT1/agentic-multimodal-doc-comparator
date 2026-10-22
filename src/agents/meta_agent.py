@@ -12,7 +12,7 @@ from models.document import MetadataExtraction, RawDocument
 
 # Try to import PDF metadata libraries
 try:
-    import fitz  # PyMuPDF
+    import pymupdf as fitz  # PyMuPDF
     PYMUPDF_AVAILABLE = True
 except (ImportError, OSError):
     PYMUPDF_AVAILABLE = False
@@ -281,33 +281,33 @@ class MetaAgent(BaseAgent):
         # Compare titles
         if meta1.title and meta2.title:
             title_sim = self._string_similarity(meta1.title, meta2.title)
-            scores.append(title_sim * 2)  # Title is important
+            scores.append((title_sim, 2.0))  # Title is important
 
         # Compare authors
         if meta1.author and meta2.author:
             author_sim = self._string_similarity(meta1.author, meta2.author)
-            scores.append(author_sim * 1.5)  # Author is important
+            scores.append((author_sim, 1.5))  # Author is important
 
         # Compare subjects
         if meta1.subject and meta2.subject:
             subject_sim = self._string_similarity(meta1.subject, meta2.subject)
-            scores.append(subject_sim)
+            scores.append((subject_sim, 1.0))
 
         # Compare keywords
         if meta1.keywords and meta2.keywords:
             keywords_sim = self._list_similarity(meta1.keywords, meta2.keywords)
-            scores.append(keywords_sim)
+            scores.append((keywords_sim, 1.0))
 
         # Compare page counts
         if meta1.page_count and meta2.page_count:
             page_ratio = min(meta1.page_count, meta2.page_count) / \
                         max(meta1.page_count, meta2.page_count)
-            scores.append(page_ratio)
+            scores.append((page_ratio, 1.0))
 
         # Overall similarity (weighted average)
         if scores:
-            total_weight = len(scores)
-            return sum(scores) / total_weight
+            total_weight = sum(weight for _, weight in scores)
+            return sum(score * weight for score, weight in scores) / total_weight
         else:
             return 0.0
 

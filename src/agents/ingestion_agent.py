@@ -12,7 +12,7 @@ from models.document import RawDocument
 
 # Try to import PyMuPDF, fallback to pypdf if not available
 try:
-    import fitz  # PyMuPDF
+    import pymupdf as fitz  # PyMuPDF
     USING_PYMUPDF = True
     print("✓ Using PyMuPDF for PDF text extraction")
 except (ImportError, OSError) as e:

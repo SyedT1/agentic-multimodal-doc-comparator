@@ -3,6 +3,8 @@ File handling utilities for document upload and validation.
 """
 import os
 import shutil
+import uuid
+import zipfile
 from pathlib import Path
 from typing import Optional, Tuple
 import config
@@ -33,6 +35,21 @@ def validate_file(file_path: str) -> Tuple[bool, str]:
     if file_size_mb > config.MAX_FILE_SIZE_MB:
         return False, f"File too large ({file_size_mb:.1f}MB). Max: {config.MAX_FILE_SIZE_MB}MB"
 
+    if file_size_mb == 0:
+        return False, "The uploaded file is empty"
+    try:
+        if file_path_obj.suffix.lower() == ".pdf":
+            with file_path_obj.open("rb") as handle:
+                header = handle.read(1024)
+            if b"%PDF-" not in header:
+                return False, "This file does not contain a valid PDF header"
+        else:
+            with zipfile.ZipFile(file_path_obj) as archive:
+                if "word/document.xml" not in archive.namelist():
+                    return False, "This file is not a Word document"
+    except (OSError, zipfile.BadZipFile):
+        return False, "The document is damaged or has an incorrect file extension"
+
     return True, ""
 
 
@@ -54,7 +71,15 @@ def save_uploaded_file(uploaded_file, destination_dir: Path = None) -> str:
     destination_dir.mkdir(parents=True, exist_ok=True)
 
     # Create file path
-    file_path = destination_dir / uploaded_file.name
+    # A separate directory prevents collisions between sessions or same-name uploads.
+    upload_name = Path(uploaded_file.name.replace("\\", "/")).name
+    if not upload_name or Path(upload_name).suffix.lower() not in config.ALLOWED_EXTENSIONS:
+        raise ValueError("Upload a PDF or DOCX document")
+    if uploaded_file.size > config.MAX_FILE_SIZE_MB * 1024 * 1024:
+        raise ValueError(f"Maximum file size is {config.MAX_FILE_SIZE_MB} MB")
+    upload_directory = destination_dir / uuid.uuid4().hex
+    upload_directory.mkdir(parents=True, exist_ok=True)
+    file_path = upload_directory / upload_name
 
     # Write file
     with open(file_path, "wb") as f:

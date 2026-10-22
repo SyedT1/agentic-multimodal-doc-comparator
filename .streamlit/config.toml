@@ -1,4 +1,16 @@
 [server]
-enableXsrfProtection = false
-enableCORS = false
-maxUploadSize = 200
+enableXsrfProtection = true
+enableCORS = true
+maxUploadSize = 50
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#087f78"
+backgroundColor = "#f5f7fa"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#172b36"
+font = "sans serif"

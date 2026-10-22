@@ -86,7 +86,7 @@ class SimilarityOrchestrator:
         if (config.ENABLE_IMAGE_COMPARISON and
             doc1_image_embeddings is not None and
             doc2_image_embeddings is not None and
-            doc1.images and doc2.images):
+            (doc1.images or doc2.images)):
             image_score = compute_image_similarity(
                 doc1.images,
                 doc1_image_embeddings,
@@ -123,6 +123,10 @@ class SimilarityOrchestrator:
 
         # Compute weighted overall score
         overall_score = compute_weighted_score(modality_scores, self.weights)
+        active_weights = {name: weight for name, weight in self.weights.items()
+                          if name in modality_scores and modality_scores[name].details.get("available", True) and weight > 0}
+        weight_total = sum(active_weights.values())
+        active_weights = {name: weight / weight_total for name, weight in active_weights.items()} if weight_total else {}
 
         # Compile matched sections from all modalities
         matched_sections = []
@@ -186,7 +190,7 @@ class SimilarityOrchestrator:
             layout_score=layout_score,
             metadata_score=metadata_score,
             matched_sections=matched_sections,
-            weights_used=self.weights
+            weights_used=active_weights
         )
 
         return report

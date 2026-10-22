@@ -37,7 +37,7 @@ def compute_text_similarity(
         )
 
     # Compute pairwise cosine similarities
-    similarities = cosine_similarity(doc1_embeddings, doc2_embeddings)
+    similarities = np.clip(cosine_similarity(doc1_embeddings, doc2_embeddings), 0.0, 1.0)
 
     # Find best matches for each chunk in doc1
     matched_items = []
@@ -64,7 +64,7 @@ def compute_text_similarity(
         similarity_scores.append(best_score)
 
     # Overall text score (mean of best matches)
-    overall_score = float(np.mean(similarity_scores)) if similarity_scores else 0.0
+    overall_score = float((similarities.max(axis=1).mean() + similarities.max(axis=0).mean()) / 2)
 
     # Sort matched items by similarity (descending)
     matched_items.sort(key=lambda x: x["similarity"], reverse=True)
@@ -104,8 +104,8 @@ def compute_table_similarity(
         # Both documents have no tables - perfectly similar in this modality
         return ModalityScore(
             modality="table",
-            score=1.0,
-            details={"reason": "Neither document has tables"},
+            score=0.0,
+            details={"reason": "Neither document has tables", "available": False},
             matched_items=[]
         )
 
@@ -119,7 +119,7 @@ def compute_table_similarity(
         )
 
     # Compute pairwise cosine similarities
-    similarities = cosine_similarity(doc1_embeddings, doc2_embeddings)
+    similarities = np.clip(cosine_similarity(doc1_embeddings, doc2_embeddings), 0.0, 1.0)
 
     # Find best matches
     matched_items = []
@@ -146,7 +146,7 @@ def compute_table_similarity(
         similarity_scores.append(best_score)
 
     # Overall table score
-    overall_score = float(np.mean(similarity_scores)) if similarity_scores else 0.0
+    overall_score = float((similarities.max(axis=1).mean() + similarities.max(axis=0).mean()) / 2)
 
     # Sort matched items by similarity
     matched_items.sort(key=lambda x: x["similarity"], reverse=True)
@@ -185,14 +185,14 @@ def compute_weighted_score(
     total_weight = 0.0
 
     for modality, score_obj in modality_scores.items():
-        if modality in weights:
+        if modality in weights and score_obj.details.get("available", True):
             weight = weights[modality]
             total_score += score_obj.score * weight
             total_weight += weight
 
     # Normalize by total weight
     if total_weight > 0:
-        return total_score / total_weight
+        return float(np.clip(total_score / total_weight, 0.0, 1.0))
     else:
         return 0.0
 
@@ -219,8 +219,8 @@ def compute_image_similarity(
         # Both documents have no images - perfectly similar
         return ModalityScore(
             modality="image",
-            score=1.0,
-            details={"reason": "Neither document has images"},
+            score=0.0,
+            details={"reason": "Neither document has images", "available": False},
             matched_items=[]
         )
 
@@ -234,7 +234,7 @@ def compute_image_similarity(
         )
 
     # Compute pairwise cosine similarities
-    similarities = cosine_similarity(doc1_embeddings, doc2_embeddings)
+    similarities = np.clip(cosine_similarity(doc1_embeddings, doc2_embeddings), 0.0, 1.0)
 
     # Find best matches
     matched_items = []
@@ -261,7 +261,7 @@ def compute_image_similarity(
         similarity_scores.append(best_score)
 
     # Overall image score
-    overall_score = float(np.mean(similarity_scores)) if similarity_scores else 0.0
+    overall_score = float((similarities.max(axis=1).mean() + similarities.max(axis=0).mean()) / 2)
 
     # Sort matched items by similarity
     matched_items.sort(key=lambda x: x["similarity"], reverse=True)
@@ -341,7 +341,7 @@ def compute_layout_similarity(
         details["num_metrics"] = len(scores)
     else:
         overall_score = 0.0
-        details = {"reason": "No comparable layout features"}
+        details = {"reason": "No comparable layout features", "available": False}
 
     return ModalityScore(
         modality="layout",
@@ -379,7 +379,7 @@ def compute_metadata_similarity(
     # Compare titles
     if meta1.title and meta2.title:
         title_sim = _string_similarity(meta1.title, meta2.title)
-        scores.append(("title", title_sim * 2))  # Title is important
+        scores.append(("title", title_sim))
         matched_fields.append({
             "field": "title",
             "doc1_value": meta1.title,
@@ -390,7 +390,7 @@ def compute_metadata_similarity(
     # Compare authors
     if meta1.author and meta2.author:
         author_sim = _string_similarity(meta1.author, meta2.author)
-        scores.append(("author", author_sim * 1.5))  # Author is important
+        scores.append(("author", author_sim))
         matched_fields.append({
             "field": "author",
             "doc1_value": meta1.author,
@@ -428,13 +428,14 @@ def compute_metadata_similarity(
 
     # Overall similarity (weighted average)
     if scores:
-        total_weight = sum(s[1] for s in scores)
-        overall_score = total_weight / len(scores)
+        field_weights = {"title": 2.0, "author": 1.5}
+        total_weight = sum(field_weights.get(name, 1.0) for name, _ in scores)
+        overall_score = sum(score * field_weights.get(name, 1.0) for name, score in scores) / total_weight
         details = {name: float(score) for name, score in scores}
         details["num_fields_compared"] = len(scores)
     else:
         overall_score = 0.0
-        details = {"reason": "No comparable metadata fields"}
+        details = {"reason": "No comparable metadata fields", "available": False}
         matched_fields = []
 
     return ModalityScore(

@@ -2,7 +2,7 @@
 Data models for similarity scoring and comparison results.
 """
 from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
 
@@ -33,8 +33,7 @@ class SimilarityReport(BaseModel):
     weights_used: Dict[str, float] = Field(default_factory=dict, description="Weights used for modality scoring")
     timestamp: datetime = Field(default_factory=datetime.now, description="Time when report was generated")
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __repr__(self) -> str:
         return (

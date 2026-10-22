@@ -1,130 +1,90 @@
-"""
-Vector Store using ChromaDB (in-memory, HF Spaces compatible)
-Stores and retrieves chunks from both documents via semantic search.
-"""
+"""Isolated Chroma collections plus BM25S, combined with reciprocal rank fusion."""
+import uuid
+import config
+import bm25s
 import chromadb
+import numpy as np
 from chromadb.config import Settings
-from sentence_transformers import SentenceTransformer
-from typing import List, Dict, Any, Optional
-import hashlib
-
-from .chunker import Chunk
-
-
-_EMBED_MODEL_NAME = "all-MiniLM-L6-v2"   # fast, small, works great
+from utils.model_runtime import get_text_model
 
 
 class VectorStore:
-    """
-    Wraps ChromaDB with a SentenceTransformer embedding function.
-    Collection name: 'doc_chunks' — shared for both documents.
-    """
+    def __init__(self, persist_dir=None, embedding_model=None):
+        self._model = embedding_model or get_text_model()
+        settings = Settings(anonymized_telemetry=False)
+        self._client = (chromadb.PersistentClient(path=persist_dir, settings=settings) if persist_dir
+                        else chromadb.EphemeralClient(settings=settings))
+        self.collection_name = "comparison_" + uuid.uuid4().hex
+        self._collection = self._client.create_collection(
+            name=self.collection_name, metadata={"hnsw:space": "cosine"})
+        self.chunks = []
+        self.embeddings = np.empty((0, 0))
+        self._lexical = None
 
-    def __init__(self, persist_dir: Optional[str] = None):
-        self._model = SentenceTransformer(_EMBED_MODEL_NAME)
-
-        if persist_dir:
-            self._client = chromadb.PersistentClient(path=persist_dir)
-        else:
-            self._client = chromadb.EphemeralClient()
-
-        self._collection = self._client.get_or_create_collection(
-            name="doc_chunks",
-            metadata={"hnsw:space": "cosine"},
-        )
-
-    # ------------------------------------------------------------------
-    # Write
-    # ------------------------------------------------------------------
-
-    def add_chunks(self, chunks: List[Chunk]) -> None:
-        """Embed and upsert chunks into the collection."""
+    def add_chunks(self, chunks):
         if not chunks:
             return
+        vectors = np.asarray(self._model.encode([c.text for c in chunks], normalize_embeddings=True,
+                                               show_progress_bar=False, batch_size=32))
+        self._collection.upsert(ids=[c.chunk_id for c in chunks], embeddings=vectors.tolist(),
+            documents=[c.text for c in chunks], metadatas=[{
+                "doc_id": c.doc_id, "chunk_index": c.chunk_index, "page": c.page,
+                "section": c.section, "filename": c.metadata.get("filename", ""),
+                "kind": c.metadata.get("kind", "text"),
+            } for c in chunks])
+        self.chunks.extend(chunks)
+        self.embeddings = vectors if not self.embeddings.size else np.vstack((self.embeddings, vectors))
+        tokens = bm25s.tokenize([c.text for c in self.chunks], stopwords="en", show_progress=False)
+        self._lexical = bm25s.BM25()
+        self._lexical.index(tokens, show_progress=False)
 
-        texts = [c.text for c in chunks]
-        embeddings = self._model.encode(texts, batch_size=32, show_progress_bar=False).tolist()
+    def _hit(self, chunk, score, **extra):
+        return {"chunk_id": chunk.chunk_id, "doc_id": chunk.doc_id, "text": chunk.text,
+                "chunk_index": chunk.chunk_index, "page": chunk.page, "section": chunk.section,
+                "filename": chunk.metadata.get("filename", ""), "score": float(score), **extra}
 
-        ids = [c.chunk_id for c in chunks]
-        metadatas = [
-            {
-                "doc_id": c.doc_id,
-                "chunk_index": c.chunk_index,
-                "section": c.section,
-                "page": c.page,
-                **{k: str(v) for k, v in c.metadata.items()},
-            }
-            for c in chunks
-        ]
+    def search(self, query, n_results=5, doc_filter=None):
+        if not self.chunks or n_results < 1:
+            return []
+        count = sum(c.doc_id == doc_filter for c in self.chunks) if doc_filter else len(self.chunks)
+        if not count:
+            return []
+        k = min(max(n_results * 3, 12), count)
+        query_embedding = self._model.encode([query], normalize_embeddings=True, show_progress_bar=False).tolist()
+        dense = self._collection.query(query_embeddings=query_embedding, n_results=k,
+            where={"doc_id": doc_filter} if doc_filter else None, include=["distances"])
+        chunk_map = {c.chunk_id: c for c in self.chunks}
+        scores, relevance = {}, {}
+        for rank, (cid, distance) in enumerate(zip(dense["ids"][0], dense["distances"][0])):
+            scores[cid] = 1 / (60 + rank + 1)
+            relevance[cid] = max(0.0, min(1.0, 1 - distance))
+        tokenized_query = bm25s.tokenize([query], stopwords="en", show_progress=False)
+        indices, lexical_scores = self._lexical.retrieve(tokenized_query, k=len(self.chunks), show_progress=False)
+        rank = 0
+        for idx, value in zip(indices[0], lexical_scores[0]):
+            chunk = self.chunks[int(idx)]
+            if value <= 0 or (doc_filter and chunk.doc_id != doc_filter):
+                continue
+            cid = chunk.chunk_id
+            scores[cid] = scores.get(cid, 0) + 1 / (60 + rank + 1)
+            rank += 1
+            if rank >= k:
+                break
+        ranked = sorted(scores, key=lambda cid: scores[cid], reverse=True)[:n_results]
+        return [self._hit(chunk_map[cid], relevance.get(cid, 0), fusion_score=scores[cid]) for cid in ranked]
 
-        self._collection.upsert(
-            ids=ids,
-            embeddings=embeddings,
-            documents=texts,
-            metadatas=metadatas,
-        )
+    def count(self):
+        return len(self.chunks)
 
-    def clear(self) -> None:
-        """Remove all chunks (useful for re-ingestion)."""
-        self._client.delete_collection("doc_chunks")
-        self._collection = self._client.get_or_create_collection(
-            name="doc_chunks",
-            metadata={"hnsw:space": "cosine"},
-        )
+    def get_all_chunks_for_doc(self, doc_id):
+        return [self._hit(c, 1) for c in self.chunks if c.doc_id == doc_id]
 
-    # ------------------------------------------------------------------
-    # Read
-    # ------------------------------------------------------------------
+    def clear(self):
+        self._client.delete_collection(self.collection_name)
+        self._collection = self._client.create_collection(name=self.collection_name, metadata={"hnsw:space": "cosine"})
+        self.chunks = []
+        self.embeddings = np.empty((0, 0))
+        self._lexical = None
 
-    def search(
-        self,
-        query: str,
-        n_results: int = 5,
-        doc_filter: Optional[str] = None,   # "doc1" | "doc2" | None
-    ) -> List[Dict[str, Any]]:
-        """
-        Semantic search over stored chunks.
-        Returns list of dicts with keys: text, doc_id, section, score.
-        """
-        query_embedding = self._model.encode([query]).tolist()
-
-        where = {"doc_id": doc_filter} if doc_filter else None
-
-        results = self._collection.query(
-            query_embeddings=query_embedding,
-            n_results=min(n_results, self._collection.count() or 1),
-            where=where,
-            include=["documents", "metadatas", "distances"],
-        )
-
-        hits = []
-        for text, meta, dist in zip(
-            results["documents"][0],
-            results["metadatas"][0],
-            results["distances"][0],
-        ):
-            hits.append({
-                "text": text,
-                "doc_id": meta.get("doc_id"),
-                "section": meta.get("section", ""),
-                "chunk_index": meta.get("chunk_index", -1),
-                "score": round(1 - dist, 4),   # cosine similarity
-            })
-
-        return hits
-
-    def count(self) -> int:
-        return self._collection.count()
-
-    def get_all_chunks_for_doc(self, doc_id: str) -> List[Dict[str, Any]]:
-        """Retrieve all stored chunks for a given document."""
-        results = self._collection.get(
-            where={"doc_id": doc_id},
-            include=["documents", "metadatas"],
-        )
-        items = []
-        for text, meta in zip(results["documents"], results["metadatas"]):
-            items.append({"text": text, **meta})
-        # Sort by chunk_index
-        items.sort(key=lambda x: int(x.get("chunk_index", 0)))
-        return items
+    def close(self):
+        self._client.delete_collection(self.collection_name)

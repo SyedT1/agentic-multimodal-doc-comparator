@@ -10,6 +10,7 @@ import io
 
 from agents.base_agent import BaseAgent
 from models.document import ImageExtraction, RawDocument
+from utils.model_runtime import get_clip_runtime
 import config
 
 # Try to import CLIP dependencies
@@ -23,7 +24,7 @@ except ImportError:
 
 # Try to import PDF image extraction libraries
 try:
-    import fitz  # PyMuPDF for image extraction
+    import pymupdf as fitz  # PyMuPDF for image extraction
     PYMUPDF_AVAILABLE = True
 except (ImportError, OSError):
     PYMUPDF_AVAILABLE = False
@@ -42,13 +43,8 @@ class ImageAgent(BaseAgent):
             )
 
         # Load CLIP model
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         model_name = config_dict.get("clip_model", "openai/clip-vit-base-patch32") if config_dict else "openai/clip-vit-base-patch32"
-
-        print(f"Loading CLIP model: {model_name} on {self.device}")
-        self.model = CLIPModel.from_pretrained(model_name).to(self.device)
-        self.processor = CLIPProcessor.from_pretrained(model_name)
-        self.model.eval()
+        self.model, self.processor, self.device = get_clip_runtime(model_name)
 
     def get_agent_name(self) -> str:
         return "ImageAgent"
@@ -248,6 +244,9 @@ class ImageAgent(BaseAgent):
 
                     # Get image features (embeddings)
                     image_features = self.model.get_image_features(**inputs)
+                    # Transformers 5 returns projected features in a model output;
+                    # older versions return the feature tensor directly.
+                    image_features = getattr(image_features, "pooler_output", image_features)
 
                     # Normalize embeddings
                     image_features = image_features / image_features.norm(dim=-1, keepdim=True)
@@ -257,9 +256,7 @@ class ImageAgent(BaseAgent):
                     embeddings_list.append(embedding)
 
                 except Exception as e:
-                    print(f"Error generating embedding for image: {e}")
-                    # Add zero embedding as placeholder
-                    embeddings_list.append(np.zeros(512))  # CLIP base has 512 dims
+                    raise RuntimeError(f"Image embedding failed: {e}") from e
 
         if embeddings_list:
             return np.array(embeddings_list)

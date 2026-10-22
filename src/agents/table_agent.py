@@ -3,11 +3,11 @@ Table agent for extracting and embedding table data.
 """
 import numpy as np
 from typing import List, Tuple, Dict, Any
-from sentence_transformers import SentenceTransformer
+import config
+from utils.model_runtime import get_text_model
 
 from agents.base_agent import BaseAgent
 from models.document import TableExtraction, RawDocument
-import config
 
 
 class TableAgent(BaseAgent):
@@ -16,7 +16,7 @@ class TableAgent(BaseAgent):
     def __init__(self, config_dict: Dict[str, Any] = None):
         super().__init__(config_dict)
         # Load embedding model (same as text agent for consistency)
-        self.model = SentenceTransformer(config.TEXT_EMBEDDING_MODEL)
+        self.model = get_text_model()
 
     def get_agent_name(self) -> str:
         return "TableAgent"
