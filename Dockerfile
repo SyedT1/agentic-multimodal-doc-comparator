@@ -8,11 +8,21 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+# Spaces runs containers as UID 1000. Both src/data and .cache must be writable.
+RUN useradd --create-home --uid 1000 appuser \
+    && chown appuser:appuser /app
+
+ENV HOME=/home/appuser \
+    PYTHONUNBUFFERED=1
+
 COPY requirements.txt ./
-COPY src/ ./src/
-COPY .streamlit/config.toml ./.streamlit/config.toml
+COPY --chown=appuser:appuser src/ ./src/
+COPY --chown=appuser:appuser docs/ ./docs/
+COPY --chown=appuser:appuser .streamlit/config.toml ./.streamlit/config.toml
 
 RUN pip3 install -r requirements.txt
+
+USER appuser
 
 EXPOSE 8501
 

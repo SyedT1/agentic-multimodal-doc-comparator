@@ -1,3 +1,13 @@
+---
+title: Folio Document Comparator
+emoji: 📄
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 8501
+pinned: false
+---
+
 # Folio — document comparison workspace
 
 Compare PDF and DOCX content, tables, images, structure, and metadata. Read changes side by side and ask questions with inspectable source references.
@@ -16,6 +26,22 @@ Copy-Item .env.example .env
 After setup, `./run.ps1` launches the app on [localhost:8501](http://localhost:8501).
 
 Comparison works without cloud API keys. For answers, set `GROQ_API_KEY` in `.env`; optionally set `GROQ_MODEL`. Never commit `.env`. The first analysis downloads local models into the project's ignored `.cache` directory. A reranker downloads on the first evidence check. Restart after changing environment settings.
+
+## Hugging Face Docker deployment
+
+Keep the YAML header at the very start of this README. `sdk: docker` selects the
+Dockerfile, and `app_port: 8501` matches the Streamlit port in the Docker entry
+point. Docker Spaces do not need a Gradio `sdk_version` or `app_file` setting.
+
+The existing GitHub Actions workflow mirrors pushes to `main` to
+`syedmohaiminulhoque/agentic-doc-sim-streamlit`. A local commit must be pushed to
+GitHub to trigger it. The workflow uses the GitHub repository's `HF_TOKEN` secret.
+Configure `GROQ_API_KEY` separately in the Hugging Face Space's Settings → Secrets;
+the local `.env` is intentionally not committed or copied into the image.
+
+The container runs as UID 1000 and owns its application, upload, and cache paths.
+Run `python -m unittest discover -s tests -p test_space_configuration.py -v` to
+check the README metadata against the Docker entry point before deploying.
 
 ## Workspace
 
