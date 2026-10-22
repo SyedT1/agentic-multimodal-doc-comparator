@@ -29,8 +29,14 @@ EXPOSE 8501
 HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
 
 ENTRYPOINT ["streamlit", "run", "src/streamlit_app.py", \
+            "--server.headless=true", \
             "--server.port=8501", \
             "--server.address=0.0.0.0", \
             "--server.enableXsrfProtection=true", \
             "--server.enableCORS=true", \
+            "--server.xsrfCookieSameSite=none", \
+            "--server.corsAllowedOrigins=https://huggingface.co", \
+            "--server.corsAllowedOrigins=https://syedmohaiminulhoque-agentic-doc-sim-streamlit.hf.space", \
+            "--browser.serverAddress=syedmohaiminulhoque-agentic-doc-sim-streamlit.hf.space", \
+            "--browser.serverPort=443", \
             "--server.maxUploadSize=50"]

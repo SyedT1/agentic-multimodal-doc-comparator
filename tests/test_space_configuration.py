@@ -49,6 +49,16 @@ class SpaceConfigurationTests(unittest.TestCase):
         self.assertIn("COPY --chown=appuser:appuser src/", self.dockerfile)
         self.assertRegex(self.dockerfile, r"(?m)^USER appuser\s*$")
 
+    def test_embedded_space_keeps_xsrf_with_cross_site_cookie_support(self):
+        command = self.entrypoint()
+        self.assertIn("--server.enableXsrfProtection=true",command)
+        self.assertIn("--server.enableCORS=true",command)
+        self.assertIn("--server.xsrfCookieSameSite=none",command)
+        self.assertIn("--server.corsAllowedOrigins=https://huggingface.co",command)
+        self.assertIn("--server.corsAllowedOrigins=https://syedmohaiminulhoque-agentic-doc-sim-streamlit.hf.space",command)
+        self.assertIn("--browser.serverAddress=syedmohaiminulhoque-agentic-doc-sim-streamlit.hf.space",command)
+        self.assertIn("--browser.serverPort=443",command)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -33,6 +33,13 @@ Keep the YAML header at the very start of this README. `sdk: docker` selects the
 Dockerfile, and `app_port: 8501` matches the Streamlit port in the Docker entry
 point. Docker Spaces do not need a Gradio `sdk_version` or `app_file` setting.
 
+The Docker entry point also configures the public HTTPS host and explicitly
+allows the Space and Hugging Face origins. XSRF protection stays enabled;
+`server.xsrfCookieSameSite=none` makes Streamlit send a `SameSite=None; Secure`
+cookie so PDF/DOCX uploads work in the cross-site Hugging Face iframe. This
+HTTPS-specific override is only in Docker; local HTTP runs keep the default
+SameSite policy. See the [Streamlit cookie configuration](https://docs.streamlit.io/develop/api-reference/configuration/config.toml).
+
 The existing GitHub Actions workflow mirrors pushes to `main` to
 `syedmohaiminulhoque/agentic-doc-sim-streamlit`. A local commit must be pushed to
 GitHub to trigger it. The workflow uses the GitHub repository's `HF_TOKEN` secret.
